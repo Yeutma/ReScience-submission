@@ -1,4 +1,4 @@
-SOURCE   = Name-YEAR
+SOURCE   = Sarazin-2018
 MDFILE   = $(SOURCE).md
 BIBFILE  = bibliography.bib
 TEXFILE  = $(SOURCE).tex
@@ -8,7 +8,7 @@ TEMPLATE = rescience-template.tex
 %.tex: $(MDFILE)
         # @echo "Processing $<"
 	@pandoc --standalone                          \
-                --filter ~/.cabal/bin/pandoc-crossref \
+                --filter ~/Library/Haskell/bin/pandoc-crossref \
                 --template=$(TEMPLATE)                \
                 --latex-engine=xelatex                \
                 --biblatex                            \
