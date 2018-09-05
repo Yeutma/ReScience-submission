@@ -1,22 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""This file serves to plot the input data into an output pdf file with
-rows * columns of either curves, as in the report
-
---------- Input ---------
-   -ver = algorithm version (S&D / Gamma_Only, Noisefull / Noiseless)
-          & simulation task (MDP or Navigation)
-   -steps = number of simulation steps
-   -nbRuns = number of times the simulation is run
-   -filenametr = string containing information on all the parameters
-   -a, b, g = meta-parameters' alpha, beta & gamma initial values
-   -distance = size of the W World, class defined in calling script
-               RL.py
-   -n_configurations = number of different configurations for the
-                       simulation
-   -path = file path for logfile
-"""
+"""Different possible data plots regrouped in one file."""
 
 try:
     import matplotlib.pyplot as plt
@@ -32,9 +17,20 @@ except ImportError, err:
 
 
 def meta_to_str(meta):
-    """Provide a plot string summary of the
-    meta-parameter meta-learning state.
-    Returns plotstr.
+    """Provide a plot string summary of the meta-parameter meta-learning
+    state.
+
+    Parameters
+    ----------
+    meta : list of 3 bools
+        Specifies which meta-parameters to perform meta-learning on.
+        Syntax: [alpha, beta, gamma]
+
+    Returns
+    -------
+    plotstr : str
+        Mathematical description of the meta-learning combinations
+        chosen.
     """
     if(np.sum(meta)==3):
         plotstr = 'Full Meta-learning'
@@ -48,10 +44,30 @@ def meta_to_str(meta):
         plotstr += 'Only'
     return plotstr
 
+
 def plotfig(fig, path, filename, attrs, suffix):
-    """Plot figure, with title & subtitle.
-    title = [W_name, noise, meta-learning]
-    subtitle = [metastr, steps, nbRuns, nbConfigs (, distance)]
+    """Plot figure with title & subtitle.
+
+    The figure's title specifies the World's name, the algorithm's
+    noise, and the chosen meta-learning combinations.
+    The figure's subtitle specifies the meta-parameter's initial values,
+    the number of simulation steps & runs, the number of world
+    configurations, and optionally the distance (in the case of a 2D
+    navigational grid world).
+
+    Parameters
+    ----------
+    fig : figure handle
+        The desired figure to plot.
+    path : dict of str
+        The path to which the plot file is saved.
+    filename : str
+        The name of the plot file.
+    attrs : dict
+        The simulation's metadata's attributes dictionary.
+        See the Data class' "attrs" attribute.
+    suffix : str
+        The plot file name's suffix.
     """
 
     # --- Define title & subtitle ---
@@ -92,8 +108,7 @@ def plotfig(fig, path, filename, attrs, suffix):
     # Define graph filename
     graph_filename = path['graph']+filename+" ("+suffix+").jpg"
 
-    # --- Show / Save fig ---
-    # fig = plt.gcf(); plt.show()
+    # --- Save fig ---
     try:
         fig.savefig(graph_filename, dpi=300)
         print graph_filename+" saved"
@@ -101,7 +116,27 @@ def plotfig(fig, path, filename, attrs, suffix):
         pass
     plt.close(fig)
 
+
 def curves(imported_data, plots, path, filename):
+    """Plot the desired simulation data curves.
+
+    If the imported_data.data is a generator, plot the simulation runs
+    one by one, or else plot their average value.
+    Initializes the colors and linewidths for each type of plot.
+
+    Parameters
+    ----------
+    imported_data : Data class
+        The Data class associated with the simulation or logged data
+        file
+    plots : list of str
+        Specifies the desired curves to plot and which ones to plot
+        together
+    path : str
+        The path to which the plot file is saved
+    filename : str
+        The name of the plot file
+    """
     # Initialize variables
     colors = {"reward":(1,0,0), "reward short average":(0.7,0,0),
               "reward long average":(0.4,0,0), "average reward":(1,0,0),
@@ -141,7 +176,27 @@ def curves(imported_data, plots, path, filename):
 
 def curves_fig(metadata, params, data, converted, plots, path, filename,
                colors, linewidths):
+    """Plot the specific desired data curve.
 
+    If the imported_data.data is a generator, plot the simulation runs
+    one by one, or else plot their average value.
+
+    Parameters
+    ----------
+    metadata, params, converted : dict from Data class
+        Contains different information for the Data class.
+    data: dict from Data class
+        Contains variables and their values.
+    plots : list of str
+        Specifies the desired curves to plot and which ones to plot
+        together.
+    path : str
+        The path to which the plot file is saved.
+    filename : str
+        The name of the plot file.
+    colors, linewidths : dict
+        Contain the specified colors & linewdiths for each plot type.
+    """
     # Initialize variables
     plots = [[plots[i]] if type(plots[i]) == str else plots[i]
               for i in range(len(plots))]
@@ -339,10 +394,19 @@ def curves_fig(metadata, params, data, converted, plots, path, filename,
 
     plotfig(fig, path, filename, attrs, 'curves')
 
+
 def statistics_plot(filename, stats):
-    """Plot bar graphs from stats.
-    Stats: [beta_version]['Fig 1'][initial parameters][states][configs][sols]
-    Stats: [beta_version]['Fig 2'][configs][sols]
+    """Cumulative bar charts of the analysed data.
+
+    Parameters
+    ----------
+    filename : str
+        The name of the plot file.
+    stats: dict
+        Contains analysed data information to be plotted.
+        Format: ([beta_version]['Fig 1'][initial parameters][states]
+                 [configs][sols]),
+                 [beta_version]['Fig 2'][configs][sols]
     """
     types = ['Affine 1xBeta+1', 'Exponential Beta']
     figs = ['Fig 1', 'Fig 2']
@@ -445,23 +509,17 @@ def statistics_plot(filename, stats):
     fig.savefig(filename, dpi=200)
 
 
-#def Qplot(Q, v):
-#    Qkeys = sorted(Q.keys())
-#    actionsArray = range(len(Q[Qkeys[1]]))
-#    Qarray = [[0 for j in actionsArray] for i in range(len(Qkeys))]
-#    for i in range(len(Q)):
-#        Qarray[i] = Q[Qkeys[i]]
-#    Qarray = np.array(Qarray)
-#    Qarray = Qarray.T
-#    plt.figure()
-#    plt.imshow(Qarray)
-#    plt.colorbar()
-#    plt.xticks(range(len(Q)), Qkeys)
-#    plt.yticks(actionsArray, v.W.actNames)
-#    plt.show()
-
-
 def plot_meta_params(a, b, g, b0=np.arange(-10, 10, 0.1)):
+    """Plot curves of meta-parameter's mean activity term according to
+    their value.
+
+    Parameters
+    ----------
+    a, b, g : int or float
+        Meta-parameter's initial values.
+    b0 : list
+        X values for which to calculate the meta-parameter's Y values.
+    """
     nPlots = 4
     alpha = Alpha(a)
     exp_beta = Beta(b, {'version':'exp'})
@@ -478,6 +536,23 @@ def plot_meta_params(a, b, g, b0=np.arange(-10, 10, 0.1)):
         ax[i].set_ylabel(texts[i])
     ax[nPlots-1].set_xlabel('b')
     plt.show()
+
+
+#def Qplot(Q, v):
+#    Qkeys = sorted(Q.keys())
+#    actionsArray = range(len(Q[Qkeys[1]]))
+#    Qarray = [[0 for j in actionsArray] for i in range(len(Qkeys))]
+#    for i in range(len(Q)):
+#        Qarray[i] = Q[Qkeys[i]]
+#    Qarray = np.array(Qarray)
+#    Qarray = Qarray.T
+#    plt.figure()
+#    plt.imshow(Qarray)
+#    plt.colorbar()
+#    plt.xticks(range(len(Q)), Qkeys)
+#    plt.yticks(actionsArray, v.W.actNames)
+#    plt.show()
+
 
 #def rabg_curves(data, attrs, filename, path, type='averaged'):
 #    """Plot data curves at every t"""
@@ -549,6 +624,7 @@ def plot_meta_params(a, b, g, b0=np.arange(-10, 10, 0.1)):
 #
 #    plotfig(fig, path, filename, attrs, suffix)
 #
+
 
 #def boxplots(data, path, labels, v):
 #    """Plot data boxplots of t_rew"""

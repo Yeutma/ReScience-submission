@@ -1,30 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""This file serves to simulate the meta-learning reinforcement
-learning algorithm, defined in oneAgentoneWorld(), in the task, defined
-by the calling program RL.py, and passed into task_sim(), so as to log
-the evolution of certain parameters in logfile.
-
---------- Input ---------
-
---- ver = algorithm version (S&D / Gamma_Only, Noisefull / Noiseles)
-          + simulation task (MDP or Navigation)
---- steps = number of simulation steps
---- nbRuns = number of times the simulation is run
---- paramStr = string containing information on all the parameters
---- a, b, g = meta-parameters' alpha, beta & gamma initial values
---- distance = size of the W World, class defined in calling script
-RL.py
---- n_configurations = number of different configurations for the
-simulation
---- path = file path for logfile
-
---------- Output ---------
-
---- logfile = logs the evolution of the parameters (reward, alpha,
-beta, gamma, etc) in float-values, each parameter = 1 column
-"""
+"""Simulate the meta-learning reinforcement learning algorithm."""
 
 try:
     import numpy as np
@@ -38,17 +15,28 @@ except ImportError, err:
 
 
 def task_sim(v, log=True, parallel=False):
-    """Defines the alpha/beta/gamma & Q-table parameters, conserved
-    across simulations.
-    Simulates the algorithm in either task (Navigation or MDP), and
-    logs the performance in data dictionary which is returned.
+    """Simulate the task over n runs.
+
+    Either simulates & logs sequentially, or in parallel.
+    If parallel, each data file is written in parallel to a temporary
+    file, and once the simulation of every run is finished the temporary
+    data files are joined together sequentially into a new file.
+
+    Parameters
+    ----------
+    v : Version class
+        Specifies the chosen version of the program
+    log : bool, optional
+        Decides whether to log data in file
+    parallel : int or bool, optional
+        Use N cores (false doesn't multithread). Default = False
     """
     print '-----------------------------------------'
     print v.filename
     print '-----------------------------------------'
 
     # Define steps at which world switches
-    v.update(switches_steps=[int(x) for x in 
+    v.update(switches_steps=[int(x) for x in
                      list(np.linspace(0, v.steps, v.W.nbConfigs+1))[1:-1]])
 
     # If parallel: write in separate files, then aggregate into one file
@@ -65,13 +53,25 @@ def task_sim(v, log=True, parallel=False):
     else:
         for run in range(v.nbRuns):
             run_task(v, run, v.log_filename, log)
-    
+
 
 def run_task(v, run, filename, log):
-    """Agent simulation in class W (world) for config_step steps
-    (with Q-table and alpha/beta/gamma defined before), with
-    meta-learning algorithms on these meta-parameters alpha/beta/gamma.
-    Reward and meta-parameters' evolution logged in list data.
+    """Simulate agent's learning during a single run.
+
+    Initializes world class W, meta-parameters, reward, Q-table, data
+    dictionary, and simulates the agent's learning over X steps.
+    If log option is true, logs data in Data class.
+
+    Parameters
+    ----------
+    v : Version class
+        Specifies the chosen version of the program
+    run : int
+        The run's number
+    filename : str
+        The name of the log file
+    log : bool
+        Decides whether to log data in file
     """
 
     np.random.seed(None)
@@ -114,7 +114,7 @@ def run_task(v, run, filename, log):
         # Metalearning parameters update
         rew['shortmean'] += (r-rew['shortmean']) / rew['tau1']
         rew['longmean'] += (rew['shortmean'] - rew['longmean']) / rew['tau2']
-        [x.update(v, (rew['shortmean']-rew['longmean']), step)
+        [x.update(v.meta, v.noise, (rew['shortmean']-rew['longmean']), step)
          for x in [alpha,beta,gamma]]
         #Q-value update
         delta = r + gamma.m * max(Q[S]) - Q[Stmo][choice]
@@ -123,7 +123,7 @@ def run_task(v, run, filename, log):
         if log:
             if step % v.frequency == 0:
                 for i in range(len(data.params['data_name'])):
-                    data.append(data.params['data_name'][i], 
+                    data.append(data.params['data_name'][i],
                         eval(data.params['in_program_name'][i]), 0, step)
 
     # After having looped over every step, log data into file

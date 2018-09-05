@@ -134,39 +134,42 @@ Firstly, concerning the original manuscript's Figure 1 conditions, no solution i
 Secondly, as the number of states grows and the large reward distanced, the percentage of converged solutions decreases. Indeed, the algorithm requires greater exploration and long-term perspective to solve the task. As such, meta-parameters must be kept within even more constrained values (e.g. $\beta<0.5$ vs $<1$, $\gamma>0.95$ vs $>0.9$), and for a longer period of time (since the environment is longer). However, reducing the size of desired meta-parameter zones increases the probability that the stochastic update of their value removes them from such zones. Furthermore, the more states there are, the more the arbitrarily chosen $n=100$ steps for choosing new stochastic values cuts the learning short compared to the increased number of steps necessary to learn the larger environment.
 
 **Figure A:  
-a - Affine_1xBeta+1,_Fig_1,_Beta=10,_Gamma=0.50,_MDP_10_States_n°17.jpeg.  
+"a - Affine_1xBeta+1,_Fig_1,_Beta=10,_Gamma=0.50,_MDP_10_States_n°17".  
 Je n'arrive pas à l'inclure, car erreur latex bounding_box trop grand. Mais comment changer cela depuis markdown??**
 
 Thirdly, concerning the original manuscript's Figure 2 conditions, learning in a dynamic environment where $r_2$ changes greatly decreases the percentage of converged solutions. The abrupt negative reward differential ($\overline{\overline{r}}-\overline{r}$) that comes with the environment switch leads to the agent learning the opposite direction of the $\sigma$ noise at that instant for each meta-parameter value. Since the $\sigma$ noise is chosen as Gaussian noise with mean 0, the probability of being negative or positive is $\frac{1}{2}$. As such, the probability of the $\sigma$ noise being in the required opposite direction for the meta-parameters to reset to good starting values ($\alpha$ high, $\beta$ low, $\gamma$ low) is $\frac{1}{2^3}=\frac{1}{8}$. The further the meta-parameters are from good reset values after this sudden change, the smaller the probability the meta-parameters will test good values and the agent learn the task correctly, the lesser the chance the reward differential will significantly diverge from 0 to allow for meta-parameter learning. For e.g., $\alpha$ or $\gamma$ could converge to 0 by chance (see Figure B).
 
 **Figure B:  
-b - Affine 1xBeta+1, Fig 2, Beta=1, Gamma=0.50, MDP 8 States n°6 (alpha converges to 0, no re-learning possible).  
-c - Affine 1xBeta+1, Fig 2, Beta=1, Gamma=0.50, MDP 8 States n°7 (gamma converges to 0, Q-values reset). Pareil, bounding_box sera trop grand.**
+"b - Affine 1xBeta+1, Fig 2, Beta=1, Gamma=0.50, MDP 8 States n°6" (alpha converges to 0, no re-learning possible).  
+"c - Affine 1xBeta+1, Fig 2, Beta=1, Gamma=0.50, MDP 8 States n°7" (gamma converges to 0, Q-values reset). Pareil, bounding_box sera trop grand.**
 
 Fourthly, the exponential $\beta$ meta-learning rule adapts better than the affine alternative, since stochastic changes in $\beta_{b0}$ affect $\beta$ much more, allowing it to re-start at values ~0 for exploratory purposes. This also explains the increased exponential $\beta$ performance in Figure 1, $(\beta=10, \gamma=0.5)$, 4 states, compared to the affine $\beta$ alternative.
 
 ## Examples of meta-learning dynamics
 **De même, cette partie refuse de bien formatter les bullets points.**  
-Since $\gamma$ sets the target Q-values, $\alpha$ the rate at which current Q-values converge to their target values, and $\beta$ which Q-values are updated, different combinations of values reveal much concerning the meta-learning's dynamics:
+Since $\gamma$ sets the target Q-values, $\alpha$ the rate at which current Q-values converge to their target values, and $\beta$ which Q-values are updated, different combinations of values reveal much concerning the meta-learning's dynamics:  
 * The algorithm finds a solution if and only if the large reward Q-values, once learned, are propagated to the intermediate Q-values. Additionally, if $\alpha$ converges to 0, the Q-values are constant and protected from potential un-learning.  
-**d - Exponential Beta, Fig 1, Beta=1, Gamma=0.99, MDP 10 States, n°52**  
-**e - Affine Beta, Fig 1, Beta=1, Gamma=0.99, MDP 10 States, n°34**  
+**"d - Exponential Beta, Fig 1, Beta=1, Gamma=0.99, MDP 10 States, n°52"**  
+**"e - Affine Beta, Fig 1, Beta=1, Gamma=0.99, MDP 10 States, n°34"**  
 * When varying $\gamma$, the target Q-values of each state change, and high $\alpha ~ 1$ leads to strong learning. The combination of both leads to strongly varying Q-values.  
-**f - Exponential Beta, Fig 1, Beta=1, Gamma=0.99, MDP 4 States, n°35  
-g - Exponential Beta, Fig 1, Beta=1, Gamma=0.99, MDP 4 States, n°62**  
+**"f - Exponential Beta, Fig 1, Beta=1, Gamma=0.99, MDP 4 States, n°35"  
+"g - Exponential Beta, Fig 1, Beta=1, Gamma=0.99, MDP 4 States, n°62"**  
 However, when a low $\gamma ~ 0$ is coupled with a non-null $\alpha$, the Q-values' target values become the immediate rewards, and any long-term rewards are forgotten. If $\alpha$ is high, the Q-values are quickly forgotten.  
-**h - Exponential Beta, Fig 1, Beta=10, Gamma=0.5, MDP 4 States, n°44  
-i - Exponential Beta, Fig 1, Beta=10, Gamma=0.5, MDP 4 States, n°57**  
+**"h - Exponential Beta, Fig 1, Beta=10, Gamma=0.5, MDP 4 States, n°44"  
+"i - Exponential Beta, Fig 1, Beta=10, Gamma=0.5, MDP 4 States, n°57"**  
 * When combining high learning $\alpha ~ 1$, low exploratory $\beta ~ 0$ and high long-term $\gamma ~ 1$, the agent will explore right- and wrong-direction Q-values, and update these Q-values to their target-values. Seeing as we chose Q-learning equations, in this particular meta-learning configuration, if the right-direction Q-values are high, the wrong-direction Q-values' target values will be just below the right-direction Q-values. will update to a value just below right-direction Q-values. In this case, both directions Q-values are nearly equal. If $\beta$ stays near 0, this phenomenon will last, and the agent will un-learn the solution.  
-**j - Affine Beta, Fig 1, Beta=1, Gamma=0.99, MDP 4 States, n°53
-k - Affine Beta, Fig 1, Beta=1, Gamma=0.99, MDP 4 States, n°65**  
-**l - Exponential Beta, Fig 1, Beta=1, Gamma=0.99, MDP 4 States, n°72**  
+**"j - Affine Beta, Fig 1, Beta=1, Gamma=0.99, MDP 4 States, n°53"
+"k - Affine Beta, Fig 1, Beta=1, Gamma=0.99, MDP 4 States, n°65"**  
+**"l - Exponential Beta, Fig 1, Beta=1, Gamma=0.99, MDP 4 States, n°72"**  
 * If $\beta$ is initially high when the Q-values of intermediary states haven't yet been learned, the agent can become stuck between two states whose Q-values have temporarily converged to high transitionary target values in both directions, in which case jumping between both states doesn't change their Q-values.  
-**m - Affine Beta, Fig 1, Beta=1, Gamma=0.99, 10 states, n°7  
-Je n'ai pas enregistré l'état que traverse l'agent donc je ne peux confirmer, mais je ne vois pas d'autre possibilité pour arriver à ce résultat. A confirmer.**  
+**"m - Affine Beta, Fig 1, Beta=1, Gamma=0.99, 10 states, n°7"
+Je n'ai pas enregistré l'état que traverse l'agent donc je ne peux confirmer, mais je ne vois pas d'autre possibilité pour arriver à ce résultat. A confirmer.  
+Le résultat: En effet, l'agent bloque sur l'état 9 du mauvais chemin (+r, -RL) puis oscille entre -r et +r entre l'état 8 et 9 au lieu de prendre le bon chemin (-r, +RL) jusqu'au bout. Voir le graphe
+"n - Affine Beta, Fig 1, Beta=1, Gamma=0.99, 10 states, n°14"**  
 
 ## Noise-less version
-**J'ai lancé la même simulation de 300 simulations de chacune des conditions, cette fois-ci sans bruit $\sigma$. Si le résultat est meilleur, on pourra le mentionner. Sinon, on enlève cette partie. Autres possibilités d'amélioration non-testées: nouvelle valeur bruitée prise tous les n=300 pas au lieu de 100 car r2-r1 maximal à 300 pas (et non 100 pas), ou changer les constantes de temps tau des filtres bas des récompenses r1 et r2.**
+**J'ai lancé la même simulation de 300 simulations de chacune des conditions, cette fois-ci sans bruit $\sigma$. Si le résultat est meilleur, on pourra le mentionner. Sinon, on enlève cette partie. Autres possibilités d'amélioration non-testées: nouvelle valeur bruitée prise tous les n=300 pas au lieu de 100 car r2-r1 maximal à 300 pas (et non 100 pas), ou changer les constantes de temps tau des filtres bas des récompenses r1 et r2.  
+Le résultat: Noiseless n'améliore pas les performances, du tout. Voir le graphe "Proportions Noiseless".**
 
 In the original manuscript [@schweighofer2003meta], the values of the meta-parameters depend upon the mean activity $b_0$ for each meta-parameter and the noisy activity $b=b_0+\sigma_m(t)$.  
 We propose a "noise-less" version where the noise term $sigma_m(t)=0$. As such, the meta-parameters m will vary in the desired direction for increasing reward.  

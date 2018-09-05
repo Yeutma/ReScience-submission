@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""This file serves to define the functions useful for logging
-and reading data for plotting.
-"""
+"""Functions and classes useful for data handling & analysis."""
 
 try:
     import os.path, sys
@@ -16,7 +14,18 @@ except ImportError, err:
 
 
 def check_convergence(imported_data, convergence_data="reward long average"):
-    """Obtain average statistics of the agent's convergence"""
+    """Obtain average statistics of the agent's convergence.
+
+    Calculate percentage of each of 3 cases: no solution, unstable
+    solution, and stable solution.
+    To do so, increment 1 to the case found for each run, then divide
+    by sum to obtain average.
+
+    Parameters
+    ----------
+    imported_data : Data class
+        Convergence will be checked on imported_data.data
+    """
     # Initiailization of variables
     attrs = imported_data.metadata['attrs']
     maxrews = attrs['W']['maxrews']
@@ -29,8 +38,6 @@ def check_convergence(imported_data, convergence_data="reward long average"):
     nbRuns = attrs['nbRuns']
     frequency = attrs['frequency']
 
-    # Increment convergence statistics over every run, then divide by sum
-    # To parallelise
     if isinstance(imported_data.data, types.GeneratorType):
         run = 0
         for data in imported_data.data:
@@ -40,21 +47,46 @@ def check_convergence(imported_data, convergence_data="reward long average"):
             run += 1
             print str(run)+"/"+str(nbRuns)+": "+str(stats)
     else:
-        for run in range(attrs['nbRuns']):
+        for run in range(nbRuns):
             reward = imported_data.data[convergence_data][run]
             stats = run_convergence(stats, reward, config_steps_idx, maxrews,
                                     epsilon, frequency)
             print str(run)+"/"+str(nbRuns)+": "+str(stats)
     for config in stats:
-        stats[config] = {key:float(stats[config][key])/nbRuns for
+        config_sum = sum([stats[config][key] for key in stats[config]])
+        stats[config] = {key:float(stats[config][key])/config_sum for
                        key in stats[config]}
     print "\nFinal results: "+str(stats)
     return stats
 
 def run_convergence(stats, reward, config_steps_idx, maxrews, epsilon,
                     frequency):
-    """Compute whether the algorithm has converged or not on this run,
-    for each world configuration
+    """Check whether algorithm has converged or not on this run.
+
+    The reward signal has converged if it approaches maxrew (threshold
+    at (1-epsilon) * maxrew).
+    If the reward signal has converged, we test whether it is stable.
+    The reward signal is stable if it stays converged at least 90% of
+    the time and its average value doesn't dip below 75% of maxrew.
+    According to this, the run is categorized:
+        * No solution: hasn't converged
+        * Unstable solution: has converged & isn't stable
+        * Stable solution: has converged & is stable
+
+    Parameters
+    ----------
+    stats : dict
+        Dictionary of
+    reward : list of float
+        a
+    config_steps_idx : list of int
+        a
+    maxrews : list of float
+        a
+    epsilon : float
+        a
+    frequency: int
+        a
     """
     first_step_idx = 1000/frequency
     averaged = np.array(reward)
@@ -63,11 +95,12 @@ def run_convergence(stats, reward, config_steps_idx, maxrews, epsilon,
         converged = (averaged[config_steps_idx[config]] >
                      maxrews[config]*(1-epsilon))
         # Classify agent performance
-        if not converged[first_step_idx:].any(): # If hasn't converged in any case
+        if not converged[first_step_idx:].any():
+            # If hasn't converged in any case
             stats[config]['No solution'] += 1
         else:
             # Find first converged index while correcting for positive start
-            # Evaluate whether 90% above 75% reward?
+            # inherited from past if world configuration has changed.
             first_convergence_idx = first_step_idx+(
                     np.where(converged[first_step_idx:]==True)[0][0])
             once_converged_array = (
@@ -85,9 +118,7 @@ def run_convergence(stats, reward, config_steps_idx, maxrews, epsilon,
     return stats
 
 def sliding_window(array, sliding_window_size):
-    """Return a list where each value is an average over a
-    sliding window, whose size is specified by window_size
-    """
+    """Return list of sliding average with a window of size window_size."""
     half = int(round(sliding_window_size/2))
     len_array = len(array)
     return_array = [np.nan for x in range(len_array)]
@@ -103,18 +134,28 @@ def sliding_window(array, sliding_window_size):
 
 
 class Data:
-    """Data structure, which stores the metadata, parameters,
-    and data.
-    Can import from Version class or from a file.
-    Can load the file's data, metadata, and write data and
-    metadata to a file.
+    """Handles the data and all metadata associated effectively.
+
+    Allows to record data during a simulation.
+    Can import all metadata from a Version class or a log file.
+    Can load & write the log file's data & metadata to a new file.
     Can load the parameter configurations from the parameter file.
-    - Attributes:
-        - data: dict of variables, with their recorded values
-        - metadata: dict of {attrs, subtitle, header}
-        - params: dict of {data_name, in_program_name,
-                           plotted_name, format, type}
-        - converted: dict of values converted to usable values
+
+    Attributes
+    ----------
+    data : dict of list
+        Values of each variable for each simulation run & step.
+    metadata : dict of dict
+        Contains the attrs, subtitle & header dictionaries.
+        The attrs entry contains the attributes of the program's
+        Version class associated with the past / present simulation.
+        The subtitle is recorded in the log & graph file.
+        The header is the log file's header.
+    parameters : dict
+        Stores the information from the parameter file concerning the
+        variables to be recorded.
+    converted : dict
+        Converts the metadata to more easily usable values.
     """
     special_vars = ["Qvals"]
     header_separator = '\t'
@@ -124,7 +165,6 @@ class Data:
     parameter_file = 'config/params.config'
 
     def __init__(self, ver=None, filename=None):
-
         assert (ver is None or filename is None), \
             "Cannot import from two sources simultaneously: merge conflict."
 
@@ -139,7 +179,7 @@ class Data:
             self.load_metadata(filename)
 
     def append(self, key, value, run, step):
-        """Append data to the Data.data dictionary"""
+        """Append data to the Data.data dictionary."""
         step = step/self.metadata['attrs']['frequency']
         if key not in self.special_vars:
             self.data[key][run][step] = value
@@ -150,6 +190,7 @@ class Data:
                          act in range(len(Qval))]
 
     def convert_steps(self):
+        """Convert steps according to recording frequency."""
         frequency = self.metadata['attrs']['frequency']
         switches_steps = ([0] + self.metadata['attrs']['switches_steps'] +
                           [self.metadata['attrs']['steps']])
@@ -169,6 +210,7 @@ class Data:
                 for config in configs]
 
     def convert_data(self, lines_data, file_params):
+        """Import file data: convert data from str to actual values."""
         # Separate string data into lists
         for run in range(len(lines_data)):
             lines_data[run] = lines_data[run][:-2].split(self.step_separator)
@@ -201,9 +243,7 @@ class Data:
         return data
 
     def import_ver(self, ver):
-        """Import metadata and params from Version structure.
-        Initialize data.
-        """
+        """Import metadata & params from Version class, initialize data."""
         # Import metadata and params
         self.read_params(ver.data)
         self.metadata = {'attrs':ver.attrs, 'subtitle':ver.subtitle,
@@ -213,14 +253,16 @@ class Data:
         # Initialize data
         states = self.metadata['attrs']['W']['allstates']
         actions = self.metadata['attrs']['W']['actNames']
-        self.data = {key:[[None for x in self.converted['steps_idx']]] for
-               key in self.params['data_name'] if key not in self.special_vars}
+        self.data = {key:[[None for x in self.converted['steps_idx']]]
+                for key in self.params['data_name']
+                if key not in self.special_vars}
         if "Qvals" in self.params['data_name']:
             self.data['Qvals'] = {state:[[[0. for action in actions]
-                             for step in self.converted['steps_idx']]] for state in states}
+                             for step in self.converted['steps_idx']]]
+                             for state in states}
 
     def load(self, filename, data_name="all", n="all"):
-        """Load only the data asked in data_name from filename"""
+        """Load only the data asked in data_name from data file."""
         self.load_metadata(filename)
 
         # Compare parameters loaded from file with those asked in arguments,
@@ -238,6 +280,7 @@ class Data:
             self.data = self.read_line_by_line(filename, file_params)
 
     def read_all_lines(self, filename, file_params):
+        """Read all the lines of the data file."""
         with open(filename, "r") as fileID:
             for _ in xrange(3):
                 fileID.readline()
@@ -245,6 +288,7 @@ class Data:
         return self.convert_data(lines_data, file_params)
 
     def read_line_by_line(self, filename, file_params):
+        """Read the lines of the data file one by one (memory issues)."""
         with open(filename, "r") as fileID:
             for _ in xrange(3):
                 fileID.readline()
@@ -253,7 +297,7 @@ class Data:
                 yield self.convert_data(lines_data, file_params)
 
     def load_metadata(self, filename):
-        """Only load the filename's metadata, and build params from it"""
+        """Only load the filename's metadata, and build params from it."""
         assert os.path.isfile(filename), \
             "File "+filename+" does not exist."
         with open(filename, "r") as fileID:
@@ -266,7 +310,7 @@ class Data:
         self.read_params(self.params['data_name'])
 
     def read_params(self, data):
-        """Load parameter configurations from params.config"""
+        """Load parameter configurations from parameter file."""
         with open(self.parameter_file,'r') as fileID:
             params = np.genfromtxt(fileID, dtype=None, delimiter=', ',
                           names=True)
@@ -282,7 +326,7 @@ class Data:
                  key in params.dtype.names}
 
     def write(self, filename):
-        """Log data in filename"""
+        """Log data in data file."""
         if not os.path.isfile(filename):
             self.write_metadata(filename)
 
@@ -292,22 +336,25 @@ class Data:
             for r in current_runs: # for each run in current data
                 for s in self.converted['steps_idx']: # for each step
                     dataline = []
-                    for i in range(len(self.params['data_name'])): # for each var
+                    for i in range(len(self.params['data_name'])):
+                        # for each var
                         var = self.params['data_name'][i]
                         var_format = self.params['format'][i]
                         if var not in self.special_vars:
                             val = self.data[var][r][s]
                         elif var == 'Qvals':
-                            val = {state:self.data[var][state][r][s] for state
-                                     in self.metadata['attrs']['W']['allstates']}
+                            val = {state:self.data[var][state][r][s]
+                                    for state in
+                                    self.metadata['attrs']['W']['allstates']}
                         if val is None:
                             print (val, var, s, r)
                         dataline += [var_format % val]
-                    fileID.write(self.step_join.join(dataline)+self.step_separator)
+                    fileID.write(self.step_join.join(dataline) +
+                                 self.step_separator)
                 fileID.write(self.run_separator)
 
     def write_metadata(self, filename):
-        """Only log metadata into filename"""
+        """Only log metadata into data file."""
         with open(filename, "w") as fileID:
             print >>fileID, self.metadata['attrs']
             print >>fileID, self.metadata['subtitle']
